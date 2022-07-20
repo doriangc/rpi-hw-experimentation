@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.s": "mads",
+        "printf.h": "c",
+        "irq.h": "c",
+        "gpio.h": "c"
+    }
+}
