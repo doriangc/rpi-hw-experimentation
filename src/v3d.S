@@ -1,5 +1,5 @@
-#define BUS_ADDRESSES_l2CACHE_ENABLED  = 0x40000000 // Bus Addresses: disable_l2cache=0
-#define BUS_ADDRESSES_l2CACHE_DISABLED = 0xC0000000 // Bus Addresses: disable_l2cache=1
+#define BUS_ADDRESSES_l2CACHE_ENABLED 0x40000000 // Bus Addresses: disable_l2cache=0
+#define BUS_ADDRESSES_l2CACHE_DISABLED 0xC0000000 // Bus Addresses: disable_l2cache=1
 
 .globl NV_SHADER_STATE_RECORD
 .align 16 // 128-Bit Align

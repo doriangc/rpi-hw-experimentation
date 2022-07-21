@@ -64,6 +64,7 @@ void kernel_main(void) {
     printf("SETTING ARM CLOCK RATE...");
     printf("ARM SET TO %d\n", mailbox_set_clock_rate(CT_ARM, 500000000));
 
+    // Apparently the base address of the V3D is actually at 0xFEC04000 (not at 0xFEC04000 as expected for other Pi models)
     reg32* ident0 = (reg32*)(PBASE + 0x00C04000);
     reg32* ident1 = (reg32*)(PBASE + 0x00C04004);
 
