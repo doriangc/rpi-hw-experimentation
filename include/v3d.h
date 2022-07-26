@@ -1,5 +1,7 @@
 #include "common.h"
 
+void testRun();
+
 typedef struct {
     u8 control_id; // Control ID Code Byte: ID Code #112
     u32 address; // Control ID Data Record Word: Tile Allocation Memory Address (Bit 0..31) 

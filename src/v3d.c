@@ -4,6 +4,7 @@
 #include "v3d.h"
 #include "timer.h"
 #include "peripherals/base.h"
+#include "printf.h"
 
 typedef struct {
     mailbox_tag tag;
@@ -118,7 +119,7 @@ void configureTileBinningMode() {
     control_list.viewport.y = 0;
 
     control_list.state.control_id = 65;
-    control_list.state.address = &NV_SHADER_STATE_RECORD; // address for the fragment shader
+    control_list.state.address = (u32)&NV_SHADER_STATE_RECORD; // address for the fragment shader
 
     control_list.primitive_data.control_id = 33;
     control_list.primitive_data.data = Mode_Triangles;
@@ -127,8 +128,8 @@ void configureTileBinningMode() {
 
     control_list.flush_all_state = 5;
 
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA) = &control_list;
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT0EA) = &control_list + sizeof(control_list);
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA) = (reg32)&control_list;
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT0EA) = (reg32)(&control_list + sizeof(control_list));
 
     // Hold while not finished
     while(*(reg32*)(PBASE + V3D_BASE + V3D_BFC > 0)) { timer_sleep(2); }
@@ -171,25 +172,15 @@ void render(u32 buffAddr) {
         }
     }
 
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = &renderCommand;
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT1EA) = &renderCommand + sizeof(renderCommand);
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = (reg32)&renderCommand;
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT1EA) = (reg32)(&renderCommand + sizeof(renderCommand));
 }
 
 void testRun() {
     u32 screenPtr = allocateScreenBuffer(640, 480, 32);
+    printf("Done allocating");
     configureTileBinningMode();
+    printf("Done binning");
     render(screenPtr);
+    printf("Done rendering");
 }
-
-// align 4
-// CONTROL_LIST_BIN_STRUCT: ; Control List Of Concatenated Control Records & Data Structure (Binning Mode Thread 0)
-//   Tile_Binning_Mode_Configuration BIN_ADDRESS, $2000, BIN_BASE, 10, 8, Auto_Initialise_Tile_State_Data_Array ; Tile Binning Mode Configuration (B) (Address, Size, Base Address, Tile Width, Tile Height, Data)
-//   Start_Tile_Binning ; Start Tile Binning (Advances State Counter So That Initial State Items Actually Go Into Tile Lists) (B)
-
-//   Clip_Window 0, 0, SCREEN_X, SCREEN_Y ; Clip Window
-//   Configuration_Bits Enable_Forward_Facing_Primitive + Enable_Reverse_Facing_Primitive, Early_Z_Updates_Enable ; Configuration Bits
-//   Viewport_Offset 0, 0 ; Viewport Offset
-//   NV_Shader_State NV_SHADER_STATE_RECORD ; NV Shader State (No Vertex Shading)
-//   Vertex_Array_Primitives Mode_Triangles, 3, 0 ; Vertex Array Primitives (OpenGL)
-//   Flush ; Flush (Add Return-From-Sub-List To Tile Lists & Then Flush Tile Lists To Memory) (B)
-// CONTROL_LIST_BIN_END:

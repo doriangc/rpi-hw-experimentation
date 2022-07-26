@@ -5,6 +5,7 @@
 #include "irq.h"
 #include "mailbox.h"
 #include "video.h"
+#include "v3d.h"
 
 // temp
 #include "peripherals/base.h"
@@ -81,6 +82,8 @@ void kernel_main(void) {
     printf("EMMC CLOCK: %d\n", mailbox_clock_rate(CT_EMMC));
     printf("UART CLOCK: %d\n", mailbox_clock_rate(CT_UART));
     printf("ARM CLOCK: %d\n", mailbox_clock_rate(CT_ARM));
+
+    testRun();
 
     // u32 max_temp = 0;
     // mailbox_generic_command(RPI_FIRMWARE_GET_MAX_TEMPERATURE, 0, &max_temp);
