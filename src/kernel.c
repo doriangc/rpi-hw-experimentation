@@ -83,7 +83,7 @@ void kernel_main(void) {
     printf("UART CLOCK: %d\n", mailbox_clock_rate(CT_UART));
     printf("ARM CLOCK: %d\n", mailbox_clock_rate(CT_ARM));
 
-    testRun();
+    // testRun();
 
     // u32 max_temp = 0;
     // mailbox_generic_command(RPI_FIRMWARE_GET_MAX_TEMPERATURE, 0, &max_temp);
