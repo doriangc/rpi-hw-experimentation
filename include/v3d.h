@@ -8,12 +8,14 @@ typedef struct {
     u8 num_layers;
 } number_of_layers;
 
+int64_t llroundf(float num)
+{
+    return num < 0 ? num - 0.5 : num + 0.5;
+}
+
 static inline uint64_t __gen_sfixed(float v, uint32_t start, uint32_t end, uint32_t fract_bits) {
     const float factor = (1 << fract_bits);
-
-    // const int64_t int_val = llroundf(v * factor);
-    const int64_t int_val = v * factor;
-
+    const int64_t int_val = llroundf(v * factor);
     const uint64_t mask = ~0ull >> (64 - (end - start + 1));
 
     return (int_val & mask) << start;
