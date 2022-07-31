@@ -3,6 +3,8 @@
         "*.s": "mads",
         "printf.h": "c",
         "irq.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "v3d.h": "c",
+        "mem.h": "c"
     }
 }

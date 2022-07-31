@@ -36,8 +36,6 @@ typedef struct {
     mailbox_fb_pitch pitch;
 } mailbox_fb_request;
 
-static mailbox_fb_request fb_req;
-
 const u32 BIN_ADDRESS = 0x00400000;
 const u32 BIN_BASE    = 0x00500000;
 const u8 AUTO_INITIALIZE_TILE_STATE_DATA_ARRAY = 0x04;
@@ -57,7 +55,12 @@ const u16 Early_Z_Updates_Enable = 0x0200; // Configuration_Bits: Early Z Update
 
 const u8 Mode_Triangles = 0x04;
 
+static u8 binning_command[4096] __attribute__((aligned(16)));
+static u8 render_command[4096] __attribute__((aligned(16)));
+
 u32 allocateScreenBuffer(u32 xres, u32 yres, u32 bpp) {
+    mailbox_fb_request fb_req;
+
     fb_req.res.tag.id = RPI_FIRMWARE_FRAMEBUFFER_SET_PHYSICAL_WIDTH_HEIGHT;
     fb_req.res.tag.buffer_size = 8;
     fb_req.res.tag.value_length = 8;
@@ -90,8 +93,7 @@ u32 allocateScreenBuffer(u32 xres, u32 yres, u32 bpp) {
     return fb_req.buff.base;
 }
 
-void configureTileBinningMode() {
-    u8 binning_command[64];
+void configure_tile_binning_mode() {
     u8* bcl = &binning_command;
 
     bcl = gen_number_of_layers(bcl, 1);
@@ -102,26 +104,49 @@ void configureTileBinningMode() {
     bcl = gen_cfg_bits(bcl, 0, 0, false, false, true, true, true, 7, false, false, false, false, false, false, false);
     bcl = gen_viewport_offset(bcl, 400, 300, 0, 0);
 
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA) = (reg32)&binning_command;
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT0EA) = (reg32)bcl;
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA) = (reg32)(void *)&binning_command;
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT0EA) = (reg32)(void *)bcl;
 
     // Hold while not finished
     while(*(reg32*)(PBASE + V3D_BASE + V3D_BFC > 0)) { timer_sleep(2); }
 }
 
 void render(u32 buffAddr) {
-    u8 render_command[1024];
     u8* rcl = &render_command;
 
+    rcl = gen_tile_rendering_mode_cfg_common(rcl, 1, 800, 600, 1, false, false, false, false, 0, 0, false);
+    rcl = gen_tile_rendering_mode_cfg_clear_colors_part1(rcl, 0, 0xFFFF, 0xFFFF);
+    rcl = gen_tile_rendering_mode_cfg_zs_clear_values(rcl, 0, 0);
+    rcl = gen_tile_list_initial_block_size(rcl, true, 0);
 
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = (reg32)&render_command;
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT1EA) = (reg32)(&render_command + sizeof(render_command));
+    rcl = gen_multicore_rendering_tile_list_set_base(rcl, buffAddr, 0);
+    rcl = gen_multicore_rendering_supertile_cfg(rcl, 1, 1, 13, 10, 13, 10, 1, false, false);
+    rcl = gen_tile_coordinates(rcl, 0, 0);
+    
+    rcl = gen_end_of_loads(rcl);
+    rcl = gen_store_tile_buffer_general(rcl, false, 0, 8, 0, 0, 0, false, false, false, 0, 0, 0);
+    rcl = gen_clear_tile_buffers(rcl, true, true);
+    rcl = gen_end_of_tile_marker(rcl);
+
+    rcl = gen_tile_coordinates(rcl, 0, 0);
+    rcl = gen_end_of_loads(rcl);
+    rcl = gen_store_tile_buffer_general(rcl, false, 0, 8, 0, 0, 0, false, false, false, 0, 0, 0);
+    rcl = gen_end_of_tile_marker(rcl);
+
+    rcl = gen_flush_vcd_cache(rcl);
+
+    for (int y=0; y<10; y++) {
+        for (int x=0; x<13; x++) rcl = gen_supertile_coordinates(rcl, y, x);
+    }
+
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = (reg32)(void*)&render_command;
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT1EA) = (reg32)(void*)rcl;
 }
 
 void testRun() {
-    u32 screenPtr = allocateScreenBuffer(640, 480, 32);
+    u32 screenPtr = allocateScreenBuffer(800, 600, 32);
     printf("Done allocating");
-    configureTileBinningMode();
+    configure_tile_binning_mode();
     printf("Done binning");
     render(screenPtr);
     printf("Done rendering");

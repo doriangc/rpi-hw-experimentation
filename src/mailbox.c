@@ -68,7 +68,6 @@ bool mailbox_process(mailbox_tag *tag, u32 tag_size) {
     mailbox_write(MAIL_TAGS, (u32)(void *)property_data);
 
     int result = mailbox_read(MAIL_TAGS);
-
     memcpy(tag, property_data + 2, tag_size);
 
     return true;

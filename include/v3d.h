@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common.h"
 #include "mem.h"
 
@@ -23,18 +25,14 @@ static inline uint64_t __gen_sfixed(float v, uint32_t start, uint32_t end, uint3
 
 // Based on OpenGL driver pack functionality (see Mesa project)
 
-u8* gen_start_tile_binning(
-    u8* cl
-) {
+u8* gen_start_tile_binning(u8* cl) {
     const u8 OPCODE = 6;
     cl[0] = OPCODE;
 
     return cl + 1;
 }
 
-u8* gen_flush_vcd_cache(
-    u8* cl
-) {
+u8* gen_flush_vcd_cache(u8* cl) {
     const u8 OPCODE = 19;
     cl[0] = OPCODE;
 
@@ -67,18 +65,14 @@ u8* gen_clear_tile_buffers(
     return cl + 2;
 }
 
-u8* gen_end_of_loads(
-    u8* cl
-) {
+u8* gen_end_of_loads(u8* cl) {
     const u8 OPCODE = 26;
     cl[0] = OPCODE;
 
     return cl + 1;
 }
 
-u8* gen_end_of_tile_marker(
-    u8* cl
-) {
+u8* gen_end_of_tile_marker(u8* cl) {
     const u8 OPCODE = 27;
     cl[0] = OPCODE;
 
