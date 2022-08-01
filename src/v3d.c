@@ -94,7 +94,11 @@ u32 allocateScreenBuffer(u32 xres, u32 yres, u32 bpp) {
 }
 
 void configure_tile_binning_mode() {
-    u8* bcl = &binning_command;
+    printf("Start tile binning...\n");
+
+    u8* bcl = binning_command;
+    printf("Done getting BCL\n");
+
 
     bcl = gen_number_of_layers(bcl, 1);
     bcl = gen_tile_binning_mode_config(bcl, 0, 0, false, false, 0, 1, 800, 600);
@@ -102,21 +106,26 @@ void configure_tile_binning_mode() {
     bcl = gen_start_tile_binning(bcl);
     bcl = gen_clip_window(bcl, 0, 0, 800, 600);
     bcl = gen_cfg_bits(bcl, 0, 0, false, false, true, true, true, 7, false, false, false, false, false, false, false);
-    bcl = gen_viewport_offset(bcl, 400, 300, 0, 0);
+    // bcl = gen_viewport_offset(bcl, 400, 300, 0, 0);
 
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA) = (reg32)(void *)&binning_command;
+    printf("ADDR %X\n", binning_command);
+
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA) = (reg32)(void *)binning_command;
     *(reg32*)(PBASE + V3D_BASE + V3D_CT0EA) = (reg32)(void *)bcl;
 
+    printf("Done set. \n");
+
     // Hold while not finished
-    while(*(reg32*)(PBASE + V3D_BASE + V3D_BFC > 0)) { timer_sleep(2); }
+    while(*(reg32*)(PBASE + V3D_BASE + V3D_BFC) > 0) { timer_sleep(2); }
+    printf("Done hold.\n");
 }
 
 void render(u32 buffAddr) {
-    u8* rcl = &render_command;
+    u8* rcl = render_command;
 
     rcl = gen_tile_rendering_mode_cfg_common(rcl, 1, 800, 600, 1, false, false, false, false, 0, 0, false);
-    rcl = gen_tile_rendering_mode_cfg_clear_colors_part1(rcl, 0, 0xFFFF, 0xFFFF);
-    rcl = gen_tile_rendering_mode_cfg_zs_clear_values(rcl, 0, 0);
+    rcl = gen_tile_rendering_mode_cfg_clear_colors_part1(rcl, 0, 0xFFFFFFFF, 0xFFFFFF);
+    // rcl = gen_tile_rendering_mode_cfg_zs_clear_values(rcl, 0, 0);
     rcl = gen_tile_list_initial_block_size(rcl, true, 0);
 
     rcl = gen_multicore_rendering_tile_list_set_base(rcl, buffAddr, 0);
@@ -139,15 +148,16 @@ void render(u32 buffAddr) {
         for (int x=0; x<13; x++) rcl = gen_supertile_coordinates(rcl, y, x);
     }
 
-    *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = (reg32)(void*)&render_command;
+    *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = (reg32)(void*)render_command;
     *(reg32*)(PBASE + V3D_BASE + V3D_CT1EA) = (reg32)(void*)rcl;
 }
 
 void testRun() {
+    printf("BELLo!!\n");
     u32 screenPtr = allocateScreenBuffer(800, 600, 32);
-    printf("Done allocating");
+    printf("Done allocating\n");
     configure_tile_binning_mode();
-    printf("Done binning");
+    printf("Done binning\n");
     render(screenPtr);
-    printf("Done rendering");
+    printf("Done rendering\n");
 }

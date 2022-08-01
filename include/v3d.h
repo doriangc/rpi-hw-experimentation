@@ -10,36 +10,36 @@ typedef struct {
     u8 num_layers;
 } number_of_layers;
 
-int64_t llroundf(float num)
-{
-    return num < 0 ? num - 0.5 : num + 0.5;
-}
+// static inline int64_t llroundf(float num)
+// {
+//     return num < 0 ? num - 0.5 : num + 0.5;
+// }
 
-static inline uint64_t __gen_sfixed(float v, uint32_t start, uint32_t end, uint32_t fract_bits) {
-    const float factor = (1 << fract_bits);
-    const int64_t int_val = llroundf(v * factor);
-    const uint64_t mask = ~0ull >> (64 - (end - start + 1));
+// static inline uint64_t __gen_sfixed(float v, uint32_t start, uint32_t end, uint32_t fract_bits) {
+//     const float factor = (1 << fract_bits);
+//     const int64_t int_val = llroundf(v * factor);
+//     const uint64_t mask = ~0ull >> (64 - (end - start + 1));
 
-    return (int_val & mask) << start;
-}
+//     return (int_val & mask) << start;
+// }
 
 // Based on OpenGL driver pack functionality (see Mesa project)
 
-u8* gen_start_tile_binning(u8* cl) {
+static inline u8* gen_start_tile_binning(u8* cl) {
     const u8 OPCODE = 6;
     cl[0] = OPCODE;
 
     return cl + 1;
 }
 
-u8* gen_flush_vcd_cache(u8* cl) {
+static inline u8* gen_flush_vcd_cache(u8* cl) {
     const u8 OPCODE = 19;
     cl[0] = OPCODE;
 
     return cl + 1;
 }
 
-u8* gen_supertile_coordinates(
+static inline u8* gen_supertile_coordinates(
     u8* cl,
     u8 row_number_in_supertiles,
     u8 column_number_in_supertiles
@@ -52,7 +52,7 @@ u8* gen_supertile_coordinates(
     cl[2] = column_number_in_supertiles;
 }
 
-u8* gen_clear_tile_buffers(
+static inline u8* gen_clear_tile_buffers(
     u8* cl,
     bool clear_z_stencil_buffer,
     bool clear_all_render_targets
@@ -65,21 +65,21 @@ u8* gen_clear_tile_buffers(
     return cl + 2;
 }
 
-u8* gen_end_of_loads(u8* cl) {
+static inline u8* gen_end_of_loads(u8* cl) {
     const u8 OPCODE = 26;
     cl[0] = OPCODE;
 
     return cl + 1;
 }
 
-u8* gen_end_of_tile_marker(u8* cl) {
+static inline u8* gen_end_of_tile_marker(u8* cl) {
     const u8 OPCODE = 27;
     cl[0] = OPCODE;
 
     return cl + 1;
 }
 
-u8* gen_store_tile_buffer_general(
+static inline u8* gen_store_tile_buffer_general(
     u8* cl,
     bool flip_y,
     u8 memory_format,
@@ -117,7 +117,7 @@ u8* gen_store_tile_buffer_general(
     return cl + 13;
 }
 
-u8* gen_cfg_bits(
+static inline u8* gen_cfg_bits(
     u8* cl,
     u8 rasterizer_oversample_mode,
     u8 line_rasterization,
@@ -147,7 +147,7 @@ u8* gen_cfg_bits(
     return cl + 4;
 }
 
-u8* gen_clip_window(
+static inline u8* gen_clip_window(
     u8* cl,
     u16 left_pixel_coordinate,
     u16 bottom_pixel_coordinate,
@@ -173,35 +173,35 @@ u8* gen_clip_window(
     return cl + 9;
 }
 
-u8* gen_viewport_offset(
-    u8* cl,
-    float viewport_center_x_coordinate,
-    float viewport_center_y_coordinate,
-    u16 coarse_x,
-    u16 coarse_y
-) {
-    const u8 OPCODE = 108;
+// static inline u8* gen_viewport_offset(
+//     u8* cl,
+//     float viewport_center_x_coordinate,
+//     float viewport_center_y_coordinate,
+//     u16 coarse_x,
+//     u16 coarse_y
+// ) {
+//     const u8 OPCODE = 108;
 
-    // Convert to fixed point (only way GPU understands floats)
-    u64 fixed_point_viewport_center_x_coordinate = __gen_sfixed(viewport_center_x_coordinate, 0, 21, 8);
-    u64 fixed_point_viewport_center_y_coordinate = __gen_sfixed(viewport_center_y_coordinate, 0, 21, 8);
+//     // Convert to fixed point (only way GPU understands floats)
+//     u64 fixed_point_viewport_center_x_coordinate = __gen_sfixed(viewport_center_x_coordinate, 0, 21, 8);
+//     u64 fixed_point_viewport_center_y_coordinate = __gen_sfixed(viewport_center_y_coordinate, 0, 21, 8);
 
-    cl[0] = OPCODE;
+//     cl[0] = OPCODE;
     
-    cl[1] = fixed_point_viewport_center_x_coordinate;
-    cl[2] = fixed_point_viewport_center_x_coordinate >> 8;
-    cl[3] = coarse_x << 6 | (fixed_point_viewport_center_x_coordinate >> 16);
-    cl[4] = coarse_x >> 2;
+//     cl[1] = fixed_point_viewport_center_x_coordinate;
+//     cl[2] = fixed_point_viewport_center_x_coordinate >> 8;
+//     cl[3] = coarse_x << 6 | (fixed_point_viewport_center_x_coordinate >> 16);
+//     cl[4] = coarse_x >> 2;
 
-    cl[5] = fixed_point_viewport_center_y_coordinate;
-    cl[6] = fixed_point_viewport_center_y_coordinate >> 8;
-    cl[7] = coarse_y << 6 | (fixed_point_viewport_center_y_coordinate >> 16);
-    cl[8] = coarse_y >> 2;
+//     cl[5] = fixed_point_viewport_center_y_coordinate;
+//     cl[6] = fixed_point_viewport_center_y_coordinate >> 8;
+//     cl[7] = coarse_y << 6 | (fixed_point_viewport_center_y_coordinate >> 16);
+//     cl[8] = coarse_y >> 2;
 
-    return cl + 9;
-}
+//     return cl + 9;
+// }
 
-u8* gen_number_of_layers(
+static inline u8* gen_number_of_layers(
     u8* cl,
     u8 number_of_layers
 ) {
@@ -212,7 +212,7 @@ u8* gen_number_of_layers(
     return cl + 2;
 }
 
-u8* gen_tile_binning_mode_config(
+static inline u8* gen_tile_binning_mode_config(
     u8* cl,
     u8 tile_alloc_block_size,
     u8 tile_alloc_initial_block_size,
@@ -244,7 +244,7 @@ u8* gen_tile_binning_mode_config(
 
 // RENDERING Control List items
 
-u8* gen_tile_rendering_mode_cfg_common(
+static inline u8* gen_tile_rendering_mode_cfg_common(
     u8* cl,
     u8 number_of_render_targets,
     u16 image_width_pixels,
@@ -280,28 +280,28 @@ u8* gen_tile_rendering_mode_cfg_common(
     return cl + 9;
 }
 
-u8* gen_tile_rendering_mode_cfg_zs_clear_values(
-    u8* cl,
-    u8 stencil_clear_val,
-    float z_clear_val
-) {
-    const u8 OPCODE = 121;
-    const u8 SUB_ID = 2;
+// static inline u8* gen_tile_rendering_mode_cfg_zs_clear_values(
+//     u8* cl,
+//     u8 stencil_clear_val,
+//     float z_clear_val
+// ) {
+//     const u8 OPCODE = 121;
+//     const u8 SUB_ID = 2;
 
-    cl[0] = OPCODE;
-    cl[1] = SUB_ID;
-    cl[2] = stencil_clear_val;
+//     cl[0] = OPCODE;
+//     cl[1] = SUB_ID;
+//     cl[2] = stencil_clear_val;
     
-    memcpy(&cl[3], &z_clear_val, sizeof(z_clear_val));
+//     memcpy(&cl[3], &z_clear_val, sizeof(z_clear_val));
 
-    // UNUSED values
-    cl[7] = 0;
-    cl[8] = 0;
+//     // UNUSED values
+//     cl[7] = 0;
+//     cl[8] = 0;
 
-    return cl + 9;
-}
+//     return cl + 9;
+// }
 
-u8* gen_tile_rendering_mode_cfg_clear_colors_part1(
+static inline u8* gen_tile_rendering_mode_cfg_clear_colors_part1(
     u8* cl,
     u8 render_target_number,
     u32 clear_color_low_32_bits,
@@ -325,7 +325,7 @@ u8* gen_tile_rendering_mode_cfg_clear_colors_part1(
     return cl + 9;
 }
 
-u8* gen_multicore_rendering_supertile_cfg(
+static inline u8* gen_multicore_rendering_supertile_cfg(
     u8* cl,
     u8 supertile_width_in_tiles,
     u8 supertile_height_in_tiles,
@@ -356,7 +356,7 @@ u8* gen_multicore_rendering_supertile_cfg(
     return cl + 9;
 }
 
-u8* gen_multicore_rendering_tile_list_set_base(
+static inline u8* gen_multicore_rendering_tile_list_set_base(
     u8* cl,
     u32 address,
     u8 tile_list_set_number
@@ -375,7 +375,7 @@ u8* gen_multicore_rendering_tile_list_set_base(
     return cl + 5;
 }
 
-u8* gen_tile_coordinates(
+static inline u8* gen_tile_coordinates(
     u8* cl,
     u16 tile_column_number,
     u16 tile_row_number
@@ -391,7 +391,7 @@ u8* gen_tile_coordinates(
     return cl + 4;
 }
 
-u8* gen_tile_list_initial_block_size(
+static inline u8* gen_tile_list_initial_block_size(
     u8* cl,
     bool use_auto_chained_tile_lists,
     u8 size_of_first_block_in_chained_tile_lists
