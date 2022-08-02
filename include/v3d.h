@@ -50,6 +50,8 @@ static inline u8* gen_supertile_coordinates(
 
     cl[1] = row_number_in_supertiles;
     cl[2] = column_number_in_supertiles;
+
+    return cl + 3;
 }
 
 static inline u8* gen_clear_tile_buffers(
@@ -280,26 +282,26 @@ static inline u8* gen_tile_rendering_mode_cfg_common(
     return cl + 9;
 }
 
-// static inline u8* gen_tile_rendering_mode_cfg_zs_clear_values(
-//     u8* cl,
-//     u8 stencil_clear_val,
-//     float z_clear_val
-// ) {
-//     const u8 OPCODE = 121;
-//     const u8 SUB_ID = 2;
+static inline u8* gen_tile_rendering_mode_cfg_zs_clear_values(
+    u8* cl,
+    u8 stencil_clear_val,
+    u32 z_clear_val
+) {
+    const u8 OPCODE = 121;
+    const u8 SUB_ID = 2;
 
-//     cl[0] = OPCODE;
-//     cl[1] = SUB_ID;
-//     cl[2] = stencil_clear_val;
+    cl[0] = OPCODE;
+    cl[1] = SUB_ID;
+    cl[2] = stencil_clear_val;
     
-//     memcpy(&cl[3], &z_clear_val, sizeof(z_clear_val));
+    memcpy(&cl[3], &z_clear_val, sizeof(z_clear_val));
 
-//     // UNUSED values
-//     cl[7] = 0;
-//     cl[8] = 0;
+    // UNUSED values
+    cl[7] = 0;
+    cl[8] = 0;
 
-//     return cl + 9;
-// }
+    return cl + 9;
+}
 
 static inline u8* gen_tile_rendering_mode_cfg_clear_colors_part1(
     u8* cl,
