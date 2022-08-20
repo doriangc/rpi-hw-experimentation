@@ -9,3 +9,4 @@ void* memcpy(void *dest, const void *src, u32 n);
 #define GPU_MEM_BASE        GPU_UNCACHED_BASE
 
 #define BUS_ADDRESS(addr)   (((addr) & ~0xC0000000) | GPU_MEM_BASE)
+#define V3D_ADDRESS(addr)   ((addr) & ~0xC0000000)

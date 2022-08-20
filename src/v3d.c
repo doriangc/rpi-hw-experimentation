@@ -2,6 +2,7 @@
 #include "mailbox.h"
 #include "video.h"
 #include "v3d.h"
+#include "mem.h"
 #include "timer.h"
 #include "peripherals/base.h"
 #include "printf.h"
@@ -57,6 +58,7 @@ const u8 Mode_Triangles = 0x04;
 
 static u8 binning_command[4096] __attribute__((aligned(16)));
 static u8 render_command[4096] __attribute__((aligned(16)));
+static u8 indirect_render_command[1024] __attribute__((aligned(16)));
 
 u32 allocateScreenBuffer(u32 xres, u32 yres, u32 bpp) {
     mailbox_fb_request fb_req;
@@ -101,11 +103,12 @@ void configure_tile_binning_mode() {
 
     bcl = gen_number_of_layers(bcl, 1);
     bcl = gen_tile_binning_mode_config(bcl, 0, 0, false, false, 0, 1, 800, 600);
+    bcl = gen_flush_vcd_cache(bcl);
     
-    bcl = gen_start_tile_binning(bcl);
-    bcl = gen_clip_window(bcl, 0, 0, 800, 600);
-    bcl = gen_cfg_bits(bcl, 0, 0, false, false, true, true, true, 7, false, false, false, false, false, false, false);
-    // bcl = gen_viewport_offset(bcl, 400, 300, 0, 0);
+    // bcl = gen_start_tile_binning(bcl);
+    // bcl = gen_clip_window(bcl, 0, 0, 800, 600);
+    // bcl = gen_cfg_bits(bcl, 0, 0, false, false, true, true, true, 7, false, false, false, false, false, false, false);
+    // bcl = gen_viewport_offset(bcl, 400 << 8, 300 << 8, 0, 0);
 
     printf("Should be 119: %d\n", binning_command[0]);
     printf("ADDR %X\n", binning_command);
@@ -118,23 +121,40 @@ void configure_tile_binning_mode() {
 
     // Hold while not finished
     while(*(reg32*)(PBASE + V3D_BASE + V3D_BFC) > 0) { timer_sleep(2); }
+
+    printf("Status register for thread 0: %X \n", *(reg32*)(PBASE + V3D_BASE + V3D_CT0CS));
+    printf("Current address thread 0: %X \n", *(reg32*)(PBASE + V3D_BASE + V3D_CT0CA));
+
     printf("Done hold.\n");
 }
 
-void render(u32 buffAddr) {
+void render(u32 buffAddrO) {
     u8* rcl = render_command;
+    u8* ircl = indirect_render_command;
+    u32* buffAddr = (u32 *)((buffAddrO | 0x40000000) & ~0xC0000000);
+
+    // printf("Zeroing out memory the stupid way...\n");
+    // for (int i=0; i<800*600; i++) {
+    //     buffAddr[i] = 0xFFFFFF;
+    //     if (i % 10000 == 0) {
+    //         printf("%d\n", i);
+    //     }
+    // }
+
+    printf("BEFORE: %X, %X\n", buffAddr[0], buffAddr[100]);
 
     rcl = gen_tile_rendering_mode_cfg_common(rcl, 1, 800, 600, 1, false, false, false, false, 0, 0, false);
-    rcl = gen_tile_rendering_mode_cfg_clear_colors_part1(rcl, 0, 0xFFFFFFFF, 0xFFFFFF);
+    rcl = gen_tile_rendering_mode_cfg_clear_colors_part1(rcl, 0, 0xFF00FFFF, 0);
+    rcl = gen_tile_rendering_mode_cfg_color(rcl, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     rcl = gen_tile_rendering_mode_cfg_zs_clear_values(rcl, 0, 0);
     rcl = gen_tile_list_initial_block_size(rcl, true, 0);
 
-    printf("Buffer address: %X\n", buffAddr);
+    printf("Buffer address: %X\n", buffAddrO);
 
     rcl = gen_multicore_rendering_tile_list_set_base(rcl, buffAddr, 0);
     rcl = gen_multicore_rendering_supertile_cfg(rcl, 1, 1, 13, 10, 13, 10, 1, false, false);
-    rcl = gen_tile_coordinates(rcl, 0, 0);
     
+    rcl = gen_tile_coordinates(rcl, 0, 0);
     rcl = gen_end_of_loads(rcl);
     rcl = gen_store_tile_buffer_general(rcl, false, 0, 8, 0, 0, 0, false, false, false, 0, 0, 0);
     rcl = gen_clear_tile_buffers(rcl, true, true);
@@ -147,12 +167,40 @@ void render(u32 buffAddr) {
 
     rcl = gen_flush_vcd_cache(rcl);
 
-    for (int y=0; y<10; y++) {
-        for (int x=0; x<13; x++) rcl = gen_supertile_coordinates(rcl, y, x);
-    }
+    // Per tile control list
+    // ircl = gen_halt(ircl);
+    ircl = gen_tile_coordinates_implicit(ircl);
+    ircl = gen_end_of_loads(ircl);
+    ircl = gen_prim_list_format(ircl, false, 2);
+    ircl = gen_set_instanceid(ircl, 0);
+    // ircl = gen_branch_to_implicit_tile_list(ircl, 0);
+    ircl = gen_store_tile_buffer_general(ircl, false, 4, 0, 27, 0, 0, true, false, false, 75, 0, buffAddr);
+    ircl = gen_clear_tile_buffers(ircl, true, true);
+    ircl = gen_end_of_tile_marker(ircl);
+    ircl = gen_return_from_sub_list(ircl);
+
+    rcl = gen_start_address_of_generic_tile_list(rcl, V3D_ADDRESS((u32)indirect_render_command), V3D_ADDRESS((u32)ircl));
+
+    // for (int y=0; y<10; y++) {
+    //     for (int x=0; x<13; x++) rcl = gen_supertile_coordinates(rcl, y, x);
+    // }
+
+    rcl = gen_supertile_coordinates(rcl, 0, 0);
+
+    rcl = gen_end_of_rendering(rcl);
+
+    printf("Status register for thread 1: %X \n", *(reg32*)(PBASE + V3D_BASE + V3D_CT1CS));
 
     *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA) = (u32)render_command;
     *(reg32*)(PBASE + V3D_BASE + V3D_CT1EA) = (u32)rcl;
+
+    timer_sleep(200);
+
+    printf("IRCL: %X %X \n", indirect_render_command, ircl);
+    printf("RCL END, %X\n", rcl);
+    printf("Status register for thread 1: %X \n", *(reg32*)(PBASE + V3D_BASE + V3D_CT1CS));
+    printf("Current address thread 1: %X \n", *(reg32*)(PBASE + V3D_BASE + V3D_CT1CA));
+    printf("After: %X, %X\n", buffAddr[0], buffAddr[100]);
 }
 
 void testRun() {

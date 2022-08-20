@@ -25,8 +25,29 @@ typedef struct {
 
 // Based on OpenGL driver pack functionality (see Mesa project)
 
+static inline u8* gen_halt(u8* cl) {
+    const u8 OPCODE = 0;
+    cl[0] = OPCODE;
+
+    return cl + 1;
+}
+
 static inline u8* gen_start_tile_binning(u8* cl) {
     const u8 OPCODE = 6;
+    cl[0] = OPCODE;
+
+    return cl + 1;
+}
+
+static inline u8* gen_end_of_rendering(u8* cl) {
+    const u8 OPCODE = 13;
+    cl[0] = OPCODE;
+
+    return cl + 1;
+}
+
+static inline u8* gen_return_from_sub_list(u8* cl) {
+    const u8 OPCODE = 18;
     cl[0] = OPCODE;
 
     return cl + 1;
@@ -39,6 +60,39 @@ static inline u8* gen_flush_vcd_cache(u8* cl) {
     return cl + 1;
 }
 
+static inline u8* gen_start_address_of_generic_tile_list(
+    u8* cl,
+    u32 start,
+    u32 end
+) {
+    const u8 OPCODE = 20;
+    cl[0] = OPCODE;
+
+    cl[1] = start;
+    cl[2] = start >> 8;
+    cl[3] = start >> 16;
+    cl[4] = start >> 24;
+
+    cl[5] = end;
+    cl[6] = end >> 8;
+    cl[7] = end >> 16;
+    cl[8] = end >> 24;
+
+    return cl + 9;
+}
+
+static inline u8* gen_branch_to_implicit_tile_list(
+    u8* cl,
+    u8 tile_list_set_number
+) {
+    const u8 OPCODE = 21;
+    
+    cl[0] = OPCODE;
+    cl[1] = tile_list_set_number;
+
+    return cl + 2;
+}
+
 static inline u8* gen_supertile_coordinates(
     u8* cl,
     u8 row_number_in_supertiles,
@@ -48,8 +102,8 @@ static inline u8* gen_supertile_coordinates(
 
     cl[0] = OPCODE;
 
-    cl[1] = row_number_in_supertiles;
-    cl[2] = column_number_in_supertiles;
+    cl[1] = column_number_in_supertiles;
+    cl[2] = row_number_in_supertiles;
 
     return cl + 3;
 }
@@ -119,6 +173,35 @@ static inline u8* gen_store_tile_buffer_general(
     return cl + 13;
 }
 
+static inline u8* gen_set_instanceid(
+    u8* cl,
+    u32 instanceId
+) {
+    const u8 OPCODE = 54;
+
+    cl[0] = OPCODE;
+
+    cl[1] = instanceId;
+    cl[2] = instanceId >> 8;
+    cl[3] = instanceId >> 16;
+    cl[4] = instanceId >> 24;
+
+    return cl + 5;
+}
+
+static inline u8* gen_prim_list_format(
+    u8* cl,
+    bool tri_strip_or_fan,
+    u8 primitive_type
+) {
+    const u8 OPCODE = 56;
+
+    cl[0] = OPCODE;
+    cl[1] = tri_strip_or_fan << 7 | primitive_type;
+
+    return cl + 2;
+}
+
 static inline u8* gen_cfg_bits(
     u8* cl,
     u8 rasterizer_oversample_mode,
@@ -175,33 +258,33 @@ static inline u8* gen_clip_window(
     return cl + 9;
 }
 
-// static inline u8* gen_viewport_offset(
-//     u8* cl,
-//     float viewport_center_x_coordinate,
-//     float viewport_center_y_coordinate,
-//     u16 coarse_x,
-//     u16 coarse_y
-// ) {
-//     const u8 OPCODE = 108;
+static inline u8* gen_viewport_offset(
+    u8* cl,
+    u16 viewport_center_x_coordinate,
+    u16 viewport_center_y_coordinate,
+    u16 coarse_x,
+    u16 coarse_y
+) {
+    const u8 OPCODE = 108;
 
-//     // Convert to fixed point (only way GPU understands floats)
-//     u64 fixed_point_viewport_center_x_coordinate = __gen_sfixed(viewport_center_x_coordinate, 0, 21, 8);
-//     u64 fixed_point_viewport_center_y_coordinate = __gen_sfixed(viewport_center_y_coordinate, 0, 21, 8);
+    // Convert to fixed point (only way GPU understands floats)
+    // u64 fixed_point_viewport_center_x_coordinate = __gen_sfixed(viewport_center_x_coordinate, 0, 21, 8);
+    // u64 fixed_point_viewport_center_y_coordinate = __gen_sfixed(viewport_center_y_coordinate, 0, 21, 8);
 
-//     cl[0] = OPCODE;
+    cl[0] = OPCODE;
     
-//     cl[1] = fixed_point_viewport_center_x_coordinate;
-//     cl[2] = fixed_point_viewport_center_x_coordinate >> 8;
-//     cl[3] = coarse_x << 6 | (fixed_point_viewport_center_x_coordinate >> 16);
-//     cl[4] = coarse_x >> 2;
+    cl[1] = viewport_center_x_coordinate;
+    cl[2] = viewport_center_y_coordinate >> 8;
+    cl[3] = coarse_x << 6 | (viewport_center_y_coordinate >> 16);
+    cl[4] = coarse_x >> 2;
 
-//     cl[5] = fixed_point_viewport_center_y_coordinate;
-//     cl[6] = fixed_point_viewport_center_y_coordinate >> 8;
-//     cl[7] = coarse_y << 6 | (fixed_point_viewport_center_y_coordinate >> 16);
-//     cl[8] = coarse_y >> 2;
+    cl[5] = viewport_center_y_coordinate;
+    cl[6] = viewport_center_y_coordinate >> 8;
+    cl[7] = coarse_y << 6 | (viewport_center_y_coordinate >> 16);
+    cl[8] = coarse_y >> 2;
 
-//     return cl + 9;
-// }
+    return cl + 9;
+}
 
 static inline u8* gen_number_of_layers(
     u8* cl,
@@ -278,6 +361,41 @@ static inline u8* gen_tile_rendering_mode_cfg_common(
     cl[7] = pad << 4 | early_depth_stencil_clear << 3 | internal_depth_type >> 1;
 
     cl[8] = pad >> 8;
+
+    return cl + 9;
+}
+
+static inline u8* gen_tile_rendering_mode_cfg_color(
+    u8* cl,
+    u8 render_target_0_internal_type,
+    u8 render_target_0_internal_bpp,
+    u8 render_target_0_clamp,
+    u8 render_target_1_internal_type,
+    u8 render_target_1_internal_bpp,
+    u8 render_target_1_clamp,
+    u8 render_target_2_internal_type,
+    u8 render_target_2_internal_bpp,
+    u8 render_target_2_clamp,
+    u8 render_target_3_internal_type,
+    u8 render_target_3_internal_bpp,
+    u8 render_target_3_clamp,
+    u32 pad
+) {
+    const u8 OPCODE = 121;
+    const u8 SUB_ID = 1;
+
+    cl[0] = OPCODE;
+    cl[1] = render_target_0_internal_type << 6 | render_target_0_internal_bpp << 4 | SUB_ID;
+    cl[2] = render_target_1_internal_type << 6 | render_target_1_internal_bpp << 4 | render_target_0_clamp << 2 |
+            render_target_0_internal_type >> 2;
+    cl[3] = render_target_2_internal_type << 6 | render_target_2_internal_bpp << 4 | render_target_1_clamp << 2 |
+            render_target_1_internal_type >> 2;
+    cl[4] = render_target_3_internal_type << 6 | render_target_3_internal_bpp << 4 | render_target_2_clamp << 2 |
+            render_target_2_internal_type >> 2;
+    cl[5] = pad << 4 | render_target_3_clamp << 2 | render_target_3_internal_type >> 2;
+    cl[6] = pad >> 4;
+    cl[7] = pad >> 12;
+    cl[8] = pad >> 20;
 
     return cl + 9;
 }
@@ -391,6 +509,16 @@ static inline u8* gen_tile_coordinates(
     cl[3] = tile_row_number >> 4;
 
     return cl + 4;
+}
+
+static inline u8* gen_tile_coordinates_implicit(
+    u8* cl
+) {
+    const u8 OPCODE = 125;
+
+    cl[0] = OPCODE;
+    
+    return cl + 1;
 }
 
 static inline u8* gen_tile_list_initial_block_size(
